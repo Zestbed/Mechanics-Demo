@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
@@ -12,12 +13,21 @@ public class PlayerController : MonoBehaviour
     private float moveMult = 2f;
     [SerializeField]
     private float jumpHeight = 2f;
+    [SerializeField]
+    [Tooltip("How much to increase the speed by every frame")]
+    private float jumpDecel = 0.001f;
+    [SerializeField]
+    [Tooltip("Starting Velocity for the jump")]
+    private float startVel = 0.01f;
+    private float upVel;
     private bool isCrouched;
     private bool facingRight;
-
+    private bool isJumping;
     private bool isGrounded;
+    private float maxHeight; 
     private InputAction moveAction;
     private InputAction jumpAction;
+    private InputAction flashJumpAction;
     private Rigidbody2D rigid;
     private Animator anim;
     private BoxCollider2D coll;
@@ -27,6 +37,7 @@ public class PlayerController : MonoBehaviour
     {
         moveAction = InputSystem.actions.FindAction("Move");
         jumpAction = InputSystem.actions.FindAction("Jump");
+        flashJumpAction = InputSystem.actions.FindAction("Flash Jump");
         rigid = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         coll = GetComponent<BoxCollider2D>();
@@ -37,7 +48,6 @@ public class PlayerController : MonoBehaviour
         if (other.collider.gameObject.tag == "Ground") {
             isGrounded = true;
             anim.SetBool("isJumping", false);
-            Debug.Log("Landed");
         }
     }
 
@@ -57,9 +67,14 @@ public class PlayerController : MonoBehaviour
         Vector2 moveValue = moveAction.ReadValue<Vector2>();
         
         // Determine which way the character should be facing
-        if (moveValue.x >= 0) facingRight = true;
-        else facingRight = false;
+        bool oldFaceRight = facingRight;
+        if (moveValue.x > 0) facingRight = true;
+        if(moveValue.x < 0) facingRight = false;
         
+        if (oldFaceRight != facingRight) {
+            transform.Rotate(new Vector3(0, 180, 0));
+        }
+
         // Actions that can only happen on ground
         if (isGrounded) {
             // Horizontal Movement
@@ -69,11 +84,29 @@ public class PlayerController : MonoBehaviour
             else UnCrouch();
         }
 
+        
+        if (Mathf.Abs(rigid.velocity.x) > 0.01 || Mathf.Abs(rigid.velocity.y) > 0.01) {
+            UnCrouch();
+        }
         // If pressing up, try portal
         if (moveValue.y > 0) TryPortal();
 
         // If pressed jump, jump (lol)
         if (jumpAction.IsPressed()) Jump();
+        
+        // Jump
+        if (isJumping && transform.position.y <= maxHeight && upVel > 0) {
+
+            transform.position = new Vector3(transform.position.x, transform.position.y + upVel, 0);
+            upVel -= jumpDecel;
+        }
+        if (transform.position.y > maxHeight || upVel <= 0) {
+            isJumping = false;
+        }
+
+        if (flashJumpAction.IsPressed() && !isGrounded) {
+            // Flash jump code goes here
+        }
 
         // Change Animator Values
         if (Mathf.Abs(rigid.velocity.x) > 0.01f) {
@@ -95,7 +128,11 @@ public class PlayerController : MonoBehaviour
 
         if (isGrounded) {
             //transform.position += new Vector3(0, jumpHeight, 0);
-            rigid.AddForce(transform.up * jumpHeight, ForceMode2D.Impulse);
+            isJumping = true;
+            maxHeight = transform.position.y + jumpHeight;
+            upVel = startVel;
+
+            //rigid.AddRelativeForce(transform.up * 20f);
         }
             
 
@@ -109,9 +146,9 @@ public class PlayerController : MonoBehaviour
     void UnCrouch() {
         if (isCrouched) {
             isCrouched = false;
-            float newCollSizeY = coll.size.y * 2;
-            transform.position += new Vector3(0, newCollSizeY - coll.size.y, 0);
-            coll.size *= new Vector2(1, 2f);
+            //float newCollSizeY = coll.size.y * 2;
+            //transform.position += new Vector3(0, newCollSizeY - coll.size.y, 0);
+            //coll.size *= new Vector2(1, 2f);
             anim.SetBool("isCrouching", false);
         }
 
@@ -120,9 +157,9 @@ public class PlayerController : MonoBehaviour
     void Crouch() {
         if (!isCrouched) {
             isCrouched = true;
-            float oldCollSizeY = coll.size.y;
-            coll.size *= new Vector2(1, 0.5f);
-            transform.position += new Vector3(0, coll.size.y - oldCollSizeY, 0);
+            //float oldCollSizeY = coll.size.y;
+            //coll.size *= new Vector2(1, 0.5f);
+            //transform.position += new Vector3(0, coll.size.y - oldCollSizeY, 0);
             anim.SetBool("isCrouching", true);
         }
     }
