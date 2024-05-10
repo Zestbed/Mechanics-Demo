@@ -12,25 +12,20 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float moveMult = 2f;
     [SerializeField]
-    private float jumpHeight = 2f;
-    [SerializeField]
-    [Tooltip("How much to increase the speed by every frame")]
-    private float jumpDecel = 0.001f;
-    [SerializeField]
     [Tooltip("Starting Velocity for the jump")]
-    private float startVel = 0.01f;
-    private float upVel;
-    private bool isCrouched;
-    private bool facingRight;
-    private bool isJumping;
-    private bool isGrounded;
-    private float maxHeight; 
+    private float startVel = 3;
+    public int flashJumpCount = 1;
+    public float flashJumpSpeedX = 3;
+    public float flashJumpSpeedY = 1;
+    private int flashJumps;
+    public bool isCrouched;
+    public bool facingRight;
+    public bool isGrounded;
     private InputAction moveAction;
     private InputAction jumpAction;
     private InputAction flashJumpAction;
     private Rigidbody2D rigid;
     private Animator anim;
-    private BoxCollider2D coll;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -40,7 +35,6 @@ public class PlayerController : MonoBehaviour
         flashJumpAction = InputSystem.actions.FindAction("Flash Jump");
         rigid = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-        coll = GetComponent<BoxCollider2D>();
     }
 
 
@@ -77,6 +71,8 @@ public class PlayerController : MonoBehaviour
 
         // Actions that can only happen on ground
         if (isGrounded) {
+            // Reset flash jump count
+            flashJumps = flashJumpCount;
             // Horizontal Movement
             rigid.velocity = new Vector2(moveValue.x * moveMult, rigid.velocity.y);
             // Crouch check
@@ -88,24 +84,25 @@ public class PlayerController : MonoBehaviour
         if (Mathf.Abs(rigid.velocity.x) > 0.01 || Mathf.Abs(rigid.velocity.y) > 0.01) {
             UnCrouch();
         }
+
         // If pressing up, try portal
         if (moveValue.y > 0) TryPortal();
 
-        // If pressed jump, jump (lol)
-        if (jumpAction.IsPressed()) Jump();
-        
-        // Jump
-        if (isJumping && transform.position.y <= maxHeight && upVel > 0) {
 
-            transform.position = new Vector3(transform.position.x, transform.position.y + upVel, 0);
-            upVel -= jumpDecel;
-        }
-        if (transform.position.y > maxHeight || upVel <= 0) {
-            isJumping = false;
+        bool jumpedThisFrame = false;
+        if (jumpAction.IsPressed() && isGrounded)  {
+            Jump();
+            jumpedThisFrame = true;
         }
 
-        if (flashJumpAction.IsPressed() && !isGrounded) {
+        if (((flashJumpAction.IsPressed() && !isGrounded) || (jumpAction.WasPerformedThisFrame() && !isGrounded && !jumpedThisFrame)) && flashJumps > 0) {
             // Flash jump code goes here
+            Debug.Log("Flash Jump Engaged!");
+            Vector2 forceVec = new(3, flashJumpSpeedY);
+            if (facingRight) forceVec.x = flashJumpSpeedX;
+            else forceVec.x = -flashJumpSpeedX;
+            rigid.velocity += forceVec;
+            flashJumps--;
         }
 
         // Change Animator Values
@@ -119,24 +116,14 @@ public class PlayerController : MonoBehaviour
 
     }
 
-
     void Jump() {
         if (rigid == null) {
             Debug.Log("No Rigidbody Reference!");
             return;
         }
 
-        if (isGrounded) {
-            //transform.position += new Vector3(0, jumpHeight, 0);
-            isJumping = true;
-            maxHeight = transform.position.y + jumpHeight;
-            upVel = startVel;
+        rigid.velocityY = startVel;
 
-            //rigid.AddRelativeForce(transform.up * 20f);
-        }
-            
-
-        
     }
 
     void TryPortal() {

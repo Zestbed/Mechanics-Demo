@@ -296,9 +296,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveMult: 3
-  jumpHeight: 2
-  jumpDecel: 0.0003
-  startVel: 0.025
+  startVel: 3
+  flashJumpCount: 2
+  flashJumpSpeedX: 3
+  flashJumpSpeedY: 1.5
+  isCrouched: 0
+  facingRight: 0
+  isGrounded: 0
 --- !u!95 &74157098
 Animator:
   serializedVersion: 7
