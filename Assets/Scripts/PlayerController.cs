@@ -17,6 +17,7 @@ public class PlayerController : MonoBehaviour
     public int flashJumpCount = 1;
     public float flashJumpSpeedX = 3;
     public float flashJumpSpeedY = 1;
+    public float upJumpSpeed = 3f;
     private int flashJumps;
     public bool isCrouched;
     public bool facingRight;
@@ -96,11 +97,18 @@ public class PlayerController : MonoBehaviour
         }
 
         if (((flashJumpAction.IsPressed() && !isGrounded) || (jumpAction.WasPerformedThisFrame() && !isGrounded && !jumpedThisFrame)) && flashJumps > 0) {
-            // Flash jump code goes here
+            
+            // Flash jump
             Debug.Log("Flash Jump Engaged!");
             Vector2 forceVec = new(3, flashJumpSpeedY);
             if (facingRight) forceVec.x = flashJumpSpeedX;
             else forceVec.x = -flashJumpSpeedX;
+
+            // Check for up Jump
+            if (moveValue.y > 0 && Mathf.Abs(rigid.velocityX) < 0.1) { 
+                forceVec = new Vector2(0, upJumpSpeed);    
+            }
+
             rigid.velocity += forceVec;
             flashJumps--;
         }

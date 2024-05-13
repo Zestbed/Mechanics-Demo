@@ -300,6 +300,7 @@ MonoBehaviour:
   flashJumpCount: 2
   flashJumpSpeedX: 3
   flashJumpSpeedY: 1.5
+  upJumpSpeed: 6
   isCrouched: 0
   facingRight: 0
   isGrounded: 0
